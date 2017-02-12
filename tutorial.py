@@ -25,7 +25,9 @@ def main():
 
     addition = context.binary('+', "int", multiplication, param_z)
 
-    minus = context.unary('-', 'int', addition)
+    inc = context.binary('+', "int", addition, context.integer(1))
+
+    minus = context.unary('-', 'int', inc)
 
     block.end_with_return(minus)
 

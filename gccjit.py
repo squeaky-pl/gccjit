@@ -184,6 +184,36 @@ gcc_jit_context_new_call (gcc_jit_context *ctxt,
   gcc_jit_location *loc,
   gcc_jit_function *func,
   int numargs , gcc_jit_rvalue **args);
+
+
+extern gcc_jit_rvalue *
+gcc_jit_context_new_rvalue_from_int (gcc_jit_context *ctxt,
+     gcc_jit_type *numeric_type,
+     int value);
+
+
+enum gcc_jit_comparison
+{
+  GCC_JIT_COMPARISON_EQ,
+  GCC_JIT_COMPARISON_NE,
+  GCC_JIT_COMPARISON_LT,
+  GCC_JIT_COMPARISON_LE,
+  GCC_JIT_COMPARISON_GT,
+  GCC_JIT_COMPARISON_GE
+};
+
+gcc_jit_rvalue *
+gcc_jit_context_new_comparison (gcc_jit_context *ctxt,
+    gcc_jit_location *loc,
+    enum gcc_jit_comparison op,
+    gcc_jit_rvalue *a, gcc_jit_rvalue *b);
+
+void
+gcc_jit_block_end_with_conditional(gcc_jit_block *block,
+    gcc_jit_location *loc,
+    gcc_jit_rvalue *boolval,
+    gcc_jit_block *on_true,
+    gcc_jit_block *on_false);
 """)
 
 lib = ffi.dlopen('libgccjit.so.0')
@@ -267,6 +297,34 @@ def unaryop(value):
     assert(0)
 
 
+class ComparisonOp(enum.Enum):
+    EQ = lib.GCC_JIT_COMPARISON_EQ
+    NE = lib.GCC_JIT_COMPARISON_NE
+    LT = lib.GCC_JIT_COMPARISON_LT
+    LE = lib.GCC_JIT_COMPARISON_LE
+    GT = lib.GCC_JIT_COMPARISON_GT
+    GE = lib.GCC_JIT_COMPARISON_GE
+
+
+string_to_compop = {
+    '==': ComparisonOp.EQ,
+    '!=': ComparisonOp.NE,
+    '<': ComparisonOp.LT,
+    '<=': ComparisonOp.LE,
+    '>': ComparisonOp.GT,
+    '>=': ComparisonOp.GE
+}
+
+
+def compop(value):
+    if isinstance(value, ComparisonOp):
+        return value
+    elif isinstance(value, str):
+        return string_to_compop[value]
+
+    assert(0)
+
+
 class Context:
     def __init__(self, *, optimization_level=None, dump=False):
         self.ctxt = lib.gcc_jit_context_acquire()
@@ -288,14 +346,15 @@ class Context:
 
         if typ not in self._type_cache:
             self._type_cache[typ] = lib.gcc_jit_context_get_type(
-            self.ctxt, typ.value)
+                self.ctxt, typ.value)
 
         return self._type_cache[typ]
 
     def param(self, typ, name):
         typ = self.type(typ)
 
-        return lib.gcc_jit_context_new_param(self.ctxt, ffi.NULL, typ, name.encode())
+        return lib.gcc_jit_context_new_param(
+            self.ctxt, ffi.NULL, typ, name.encode())
 
     def function(self, fun_type, ret_type, name, params=None):
         ret_type = self.type(ret_type)
@@ -305,9 +364,12 @@ class Context:
                 variadic = 1
                 params.pop()
             params = ffi.new("gcc_jit_param*[]", params)
+
+        params = params or ffi.NULL
+        len_params = len(params) if params else 0
         return lib.gcc_jit_context_new_function(
             self.ctxt, ffi.NULL, fun_type.value, ret_type, name.encode(),
-            len(params), params, variadic)
+            len_params, params, variadic)
 
     def imported_function(self, ret_type, name, params=None):
         return self.function(
@@ -316,6 +378,10 @@ class Context:
     def exported_function(self, ret_type, name, params=None):
         return self.function(
             Function.EXPORTED, ret_type, name, params)
+
+    def integer(self, value):
+        typ = self.type("int")
+        return lib.gcc_jit_context_new_rvalue_from_int(self.ctxt, typ, value)
 
     def string_literal(self, value):
         return lib.gcc_jit_context_new_string_literal(self.ctxt, value)
@@ -345,6 +411,12 @@ class Context:
         return lib.gcc_jit_context_new_unary_op(
             self.ctxt, ffi.NULL, operation.value, res_type, value)
 
+    def comparison(self, operation, left, right):
+        operation = compop(operation)
+        left, right = rvalue(left), rvalue(right)
+        return lib.gcc_jit_context_new_comparison(
+            self.ctxt, ffi.NULL, operation.value, left, right)
+
     def compile(self):
         rslt = lib.gcc_jit_context_compile(self.ctxt)
 
@@ -363,6 +435,10 @@ class Block:
 
     def end_with_return(self, rvalue):
         lib.gcc_jit_block_end_with_return(self.blck, ffi.NULL, rvalue)
+
+    def end_with_conditonal(self, rvalue, on_true, on_false):
+        lib.gcc_jit_block_end_with_conditional(
+            self.blck, ffi.NULL, rvalue, on_true.blck, on_false.blck)
 
 
 class Result:
