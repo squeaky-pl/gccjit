@@ -214,6 +214,23 @@ gcc_jit_block_end_with_conditional(gcc_jit_block *block,
     gcc_jit_rvalue *boolval,
     gcc_jit_block *on_true,
     gcc_jit_block *on_false);
+
+typedef ... gcc_jit_lvalue;
+
+gcc_jit_lvalue *
+gcc_jit_function_new_local (gcc_jit_function *func,
+    gcc_jit_location *loc,
+    gcc_jit_type *type,
+    const char *name);
+
+void
+gcc_jit_block_add_assignment (gcc_jit_block *block,
+    gcc_jit_location *loc,
+    gcc_jit_lvalue *lvalue,
+    gcc_jit_rvalue *rvalue);
+
+gcc_jit_rvalue *
+gcc_jit_lvalue_as_rvalue (gcc_jit_lvalue *lvalue);
 """)
 
 lib = ffi.dlopen('libgccjit.so.0')
@@ -249,12 +266,14 @@ class BinaryOp(enum.Enum):
     MULT = lib.GCC_JIT_BINARY_OP_MULT
 
 
-def rvalue(value):
+def asrvalue(value):
     typname = ffi.typeof(value).cname
     if typname == 'gcc_jit_rvalue *':
         return value
     elif typname == 'gcc_jit_param *':
         return lib.gcc_jit_param_as_rvalue(value)
+    elif typname == 'gcc_jit_lvalue *':
+        return lib.gcc_jit_lvalue_as_rvalue(value)
 
     assert(0)
 
@@ -371,6 +390,12 @@ class Context:
             self.ctxt, ffi.NULL, fun_type.value, ret_type, name.encode(),
             len_params, params, variadic)
 
+    def local(self, function, typ, name):
+        typ = self.type(typ)
+
+        return lib.gcc_jit_function_new_local(
+            function, ffi.NULL, typ, name.encode())
+
     def imported_function(self, ret_type, name, params=None):
         return self.function(
             Function.IMPORTED, ret_type, name, params)
@@ -400,20 +425,20 @@ class Context:
     def binary(self, operation, res_type, left, right):
         res_type = self.type(res_type)
         operation = binop(operation)
-        left, right = rvalue(left), rvalue(right)
+        left, right = asrvalue(left), asrvalue(right)
         return lib.gcc_jit_context_new_binary_op(
             self.ctxt, ffi.NULL, operation.value, res_type, left, right)
 
     def unary(self, operation, res_type, value):
         res_type = self.type(res_type)
         operation = unaryop(operation)
-        value = rvalue(value)
+        value = asrvalue(value)
         return lib.gcc_jit_context_new_unary_op(
             self.ctxt, ffi.NULL, operation.value, res_type, value)
 
     def comparison(self, operation, left, right):
         operation = compop(operation)
-        left, right = rvalue(left), rvalue(right)
+        left, right = asrvalue(left), asrvalue(right)
         return lib.gcc_jit_context_new_comparison(
             self.ctxt, ffi.NULL, operation.value, left, right)
 
@@ -433,7 +458,11 @@ class Block:
     def add_eval(self, lvalue):
         lib.gcc_jit_block_add_eval(self.blck, ffi.NULL, lvalue)
 
+    def add_assignment(self, lvalue, rvalue):
+        lib.gcc_jit_block_add_assignment(self.blck, ffi.NULL, lvalue, rvalue)
+
     def end_with_return(self, rvalue):
+        rvalue = asrvalue(rvalue)
         lib.gcc_jit_block_end_with_return(self.blck, ffi.NULL, rvalue)
 
     def end_with_conditonal(self, rvalue, on_true, on_false):
