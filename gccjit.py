@@ -129,6 +129,23 @@ gcc_jit_context_new_binary_op (gcc_jit_context *ctxt,
        gcc_jit_type *result_type,
        gcc_jit_rvalue *a, gcc_jit_rvalue *b);
 
+
+enum gcc_jit_unary_op
+{
+  GCC_JIT_UNARY_OP_MINUS,
+  GCC_JIT_UNARY_OP_BITWISE_NEGATE,
+  GCC_JIT_UNARY_OP_LOGICAL_NEGATE,
+  GCC_JIT_UNARY_OP_ABS
+};
+
+
+gcc_jit_rvalue *
+gcc_jit_context_new_unary_op (gcc_jit_context *ctxt,
+    gcc_jit_location *loc,
+    enum gcc_jit_unary_op op,
+    gcc_jit_type *result_type,
+    gcc_jit_rvalue *rvalue);
+
 gcc_jit_rvalue *
 gcc_jit_param_as_rvalue (gcc_jit_param *param);
 
@@ -191,6 +208,7 @@ def enumtype(value):
 
     assert(0)
 
+
 class Function(enum.Enum):
     IMPORTED = lib.GCC_JIT_FUNCTION_IMPORTED
     EXPORTED = lib.GCC_JIT_FUNCTION_EXPORTED
@@ -221,6 +239,30 @@ def binop(value):
         return value
     elif isinstance(value, str):
         return string_to_binop[value]
+
+    assert(0)
+
+
+class UnaryOp(enum.Enum):
+    MINUS = lib.GCC_JIT_UNARY_OP_MINUS
+    BITWISE_NEGATE = lib.GCC_JIT_UNARY_OP_BITWISE_NEGATE
+    LOGICAL_NEGATE = lib.GCC_JIT_UNARY_OP_LOGICAL_NEGATE
+    ABS = lib.GCC_JIT_UNARY_OP_ABS
+
+
+string_to_unaryop = {
+    '-': UnaryOp.MINUS,
+    '~': UnaryOp.BITWISE_NEGATE,
+    '!': UnaryOp.LOGICAL_NEGATE,
+    'abs': UnaryOp.ABS
+}
+
+
+def unaryop(value):
+    if isinstance(value, UnaryOp):
+        return value
+    elif isinstance(value, str):
+        return string_to_unaryop[value]
 
     assert(0)
 
@@ -280,7 +322,7 @@ class Context:
 
     def call(self, function, arguments=None):
         if arguments:
-            arguments= ffi.new("gcc_jit_rvalue*[]", arguments)
+            arguments = ffi.new("gcc_jit_rvalue*[]", arguments)
         return lib.gcc_jit_context_new_call(
             self.ctxt, ffi.NULL, function, len(arguments), arguments)
 
@@ -295,6 +337,13 @@ class Context:
         left, right = rvalue(left), rvalue(right)
         return lib.gcc_jit_context_new_binary_op(
             self.ctxt, ffi.NULL, operation.value, res_type, left, right)
+
+    def unary(self, operation, res_type, value):
+        res_type = self.type(res_type)
+        operation = unaryop(operation)
+        value = rvalue(value)
+        return lib.gcc_jit_context_new_unary_op(
+            self.ctxt, ffi.NULL, operation.value, res_type, value)
 
     def compile(self):
         rslt = lib.gcc_jit_context_compile(self.ctxt)
