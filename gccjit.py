@@ -69,6 +69,7 @@ enum gcc_jit_types
 
 typedef ... gcc_jit_location;
 typedef ... gcc_jit_param;
+typedef ... gcc_jit_lvalue;
 
     gcc_jit_type *gcc_jit_context_get_type (gcc_jit_context *ctxt,
         enum gcc_jit_types type_);
@@ -149,6 +150,9 @@ gcc_jit_context_new_unary_op (gcc_jit_context *ctxt,
 gcc_jit_rvalue *
 gcc_jit_param_as_rvalue (gcc_jit_param *param);
 
+gcc_jit_lvalue *
+gcc_jit_param_as_lvalue (gcc_jit_param *param);
+
 void
 gcc_jit_block_end_with_return (gcc_jit_block *block,
        gcc_jit_location *loc,
@@ -214,8 +218,6 @@ gcc_jit_block_end_with_conditional(gcc_jit_block *block,
     gcc_jit_rvalue *boolval,
     gcc_jit_block *on_true,
     gcc_jit_block *on_false);
-
-typedef ... gcc_jit_lvalue;
 
 gcc_jit_lvalue *
 gcc_jit_function_new_local (gcc_jit_function *func,
@@ -299,6 +301,16 @@ def asrvalue(value):
         return lib.gcc_jit_param_as_rvalue(value)
     elif typname == 'gcc_jit_lvalue *':
         return lib.gcc_jit_lvalue_as_rvalue(value)
+
+    assert(0)
+
+
+def aslvalue(value):
+    typname = ffi.typeof(value).cname
+    if typname == 'gcc_jit_lvalue *':
+        return value
+    elif typname == 'gcc_jit_param *':
+        return lib.gcc_jit_param_as_lvalue(value)
 
     assert(0)
 
@@ -500,6 +512,7 @@ class Block:
         lib.gcc_jit_block_add_eval(self.blck, ffi.NULL, lvalue)
 
     def add_assignment(self, lvalue, rvalue):
+        lvalue, rvalue = aslvalue(lvalue), asrvalue(rvalue)
         lib.gcc_jit_block_add_assignment(self.blck, ffi.NULL, lvalue, rvalue)
 
     def add_assignment_op(self, lvalue, operation, rvalue):
