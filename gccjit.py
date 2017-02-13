@@ -520,8 +520,10 @@ class Context:
             arguments = ffi.new(
                 "gcc_jit_rvalue*[]",
                 [asrvalue(a) for a in arguments])
+        arguments = arguments or ffi.NULL
+        len_arguments = len(arguments) if arguments else 0
         return lib.gcc_jit_context_new_call(
-            self.ctxt, ffi.NULL, function, len(arguments), arguments)
+            self.ctxt, ffi.NULL, function, len_arguments, arguments)
 
     def array_access(self, pointer, index):
         pointer, index = asrvalue(pointer), asrvalue(index)

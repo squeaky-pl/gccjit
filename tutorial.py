@@ -53,10 +53,13 @@ def main():
     block = context.block(overflow)
     __builtin_uaddl_overflow = context.builtin_function(
     "__builtin_uaddl_overflow")
+    __builtin_trap = context.builtin_function("__builtin_trap")
     one = context.integer(0xffff_ffff_ffff_ffff, "unsigned long")
     res = context.local(overflow, "unsigned long", "res")
     overflow_call = context.call(
         __builtin_uaddl_overflow, [one, param, context.address(res)])
+    trap_call = context.call(__builtin_trap)
+#    block.add_eval(trap_call)
     block.end_with_return(overflow_call)
 
     result = context.compile()
