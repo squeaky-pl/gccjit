@@ -245,6 +245,15 @@ void
 gcc_jit_block_end_with_jump (gcc_jit_block *block,
     gcc_jit_location *loc,
     gcc_jit_block *target);
+
+gcc_jit_type *
+gcc_jit_type_get_pointer(gcc_jit_type *type);
+
+gcc_jit_lvalue *
+gcc_jit_context_new_array_access (gcc_jit_context *ctxt,
+    gcc_jit_location *loc,
+    gcc_jit_rvalue *ptr,
+    gcc_jit_rvalue *index);
 """)
 
 lib = ffi.dlopen('libgccjit.so.0')
@@ -252,11 +261,13 @@ lib = ffi.dlopen('libgccjit.so.0')
 
 class Type(enum.Enum):
     CONST_CHAR_PTR = lib.GCC_JIT_TYPE_CONST_CHAR_PTR
+    CHAR = lib.GCC_JIT_TYPE_CHAR
     INT = lib.GCC_JIT_TYPE_INT
 
 
 string_to_enumtype = {
     'const char*': Type.CONST_CHAR_PTR,
+    'char': Type.CHAR,
     'int': Type.INT
 }
 
@@ -296,6 +307,7 @@ string_to_binop = {
     '+': BinaryOp.PLUS,
     '*': BinaryOp.MULT
 }
+
 
 def binop(value):
     if isinstance(value, BinaryOp):
@@ -383,6 +395,16 @@ class Context:
 
         return self._type_cache[typ]
 
+    def pointer_type(self, typ):
+        typ = self.type(typ)
+
+        key = (typ, '*')
+
+        if key not in self._type_cache:
+            self._type_cache[key] = lib.gcc_jit_type_get_pointer(typ)
+
+        return self._type_cache[key]
+
     def param(self, typ, name):
         typ = self.type(typ)
 
@@ -418,8 +440,8 @@ class Context:
         return self.function(
             Function.EXPORTED, ret_type, name, params)
 
-    def integer(self, value):
-        typ = self.type("int")
+    def integer(self, value, typ="int"):
+        typ = self.type(typ)
         return lib.gcc_jit_context_new_rvalue_from_int(self.ctxt, typ, value)
 
     def string_literal(self, value):
@@ -430,6 +452,11 @@ class Context:
             arguments = ffi.new("gcc_jit_rvalue*[]", arguments)
         return lib.gcc_jit_context_new_call(
             self.ctxt, ffi.NULL, function, len(arguments), arguments)
+
+    def array_access(self, pointer, index):
+        pointer, index = asrvalue(pointer), asrvalue(index)
+        return lib.gcc_jit_context_new_array_access(
+            self.ctxt, ffi.NULL, pointer, index)
 
     def block(self, function):
         blck = lib.gcc_jit_function_new_block(function, ffi.NULL)

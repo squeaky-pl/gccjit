@@ -31,6 +31,21 @@ def main():
 
     block.end_with_return(minus)
 
+    char_ptr = context.pointer_type("char")
+    param_buffer = context.param(char_ptr, "buffer")
+
+    fill = context.exported_function(
+        "int", "fill", [param_buffer])
+
+    block = context.block(fill)
+
+    a0 = context.array_access(param_buffer, context.integer(0))
+    block.add_assignment(a0, context.integer(0xff, "char"))
+    a1 = context.array_access(param_buffer, context.integer(1))
+    block.add_assignment(a1, context.integer(0xff, "char"))
+
+    block.end_with_return(context.integer(0))
+
     result = context.compile()
     context.close()
 
@@ -39,6 +54,13 @@ def main():
     square = ffi.cast("int (*)(int, int)", fn_ptr)
     x = square(5, 1)
     print(x)
+
+    buffer = ffi.new("char[2]", b"\0\0")
+    fn_ptr = result.code("fill")
+    fill = ffi.cast("int (*)(char*)", fn_ptr)
+    x = fill(buffer)
+    print(x)
+    print(ffi.unpack(buffer, 2))
 
     result.close()
 
