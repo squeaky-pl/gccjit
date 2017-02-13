@@ -195,6 +195,10 @@ gcc_jit_context_new_rvalue_from_int (gcc_jit_context *ctxt,
      gcc_jit_type *numeric_type,
      int value);
 
+gcc_jit_rvalue *
+gcc_jit_context_new_rvalue_from_long (gcc_jit_context *ctxt,
+      gcc_jit_type *numeric_type,
+      long value);
 
 enum gcc_jit_comparison
 {
@@ -256,21 +260,48 @@ gcc_jit_context_new_array_access (gcc_jit_context *ctxt,
     gcc_jit_location *loc,
     gcc_jit_rvalue *ptr,
     gcc_jit_rvalue *index);
+
+gcc_jit_rvalue *
+gcc_jit_context_new_cast (gcc_jit_context *ctxt,
+    gcc_jit_location *loc,
+    gcc_jit_rvalue *rvalue,
+    gcc_jit_type *type);
+
+gcc_jit_function *
+gcc_jit_context_get_builtin_function (gcc_jit_context *ctxt,
+    const char *name);
+
+gcc_jit_rvalue *
+gcc_jit_context_zero (gcc_jit_context *ctxt,
+		      gcc_jit_type *numeric_type);
+
+gcc_jit_rvalue *
+gcc_jit_context_one (gcc_jit_context *ctxt,
+		     gcc_jit_type *numeric_type);
+
+gcc_jit_rvalue *
+gcc_jit_lvalue_get_address (gcc_jit_lvalue *lvalue,
+			    gcc_jit_location *loc);
+
 """)
 
 lib = ffi.dlopen('libgccjit.so.0')
 
 
 class Type(enum.Enum):
+    BOOL = lib.GCC_JIT_TYPE_BOOL
     CONST_CHAR_PTR = lib.GCC_JIT_TYPE_CONST_CHAR_PTR
     CHAR = lib.GCC_JIT_TYPE_CHAR
     INT = lib.GCC_JIT_TYPE_INT
+    UNSIGNED_LONG = lib.GCC_JIT_TYPE_UNSIGNED_LONG
 
 
 string_to_enumtype = {
+    'bool': Type.BOOL,
     'const char*': Type.CONST_CHAR_PTR,
     'char': Type.CHAR,
-    'int': Type.INT
+    'int': Type.INT,
+    'unsigned long': Type.UNSIGNED_LONG,
 }
 
 
@@ -452,16 +483,43 @@ class Context:
         return self.function(
             Function.EXPORTED, ret_type, name, params)
 
+    def builtin_function(self, name):
+        return lib.gcc_jit_context_get_builtin_function(
+            self.ctxt, name.encode())
+
     def integer(self, value, typ="int"):
         typ = self.type(typ)
-        return lib.gcc_jit_context_new_rvalue_from_int(self.ctxt, typ, value)
+        if value <= 0xffff_ffff:
+            value = ffi.cast("int", value)
+            return lib.gcc_jit_context_new_rvalue_from_int(self.ctxt, typ, value)
+        elif value <= 0xffff_ffff_ffff_ffff:
+            value = ffi.cast("long", value)
+            return lib.gcc_jit_context_new_rvalue_from_long(self.ctxt, typ, value)
+        else:
+            assert 0
+
+    def zero(self, typ="int"):
+        typ = self.type(typ)
+        return lib.gcc_jit_context_zero(self.ctxt, typ)
+
+    def one(self, typ="int"):
+        typ = self.type(typ)
+        return lib.gcc_jit_context_one(self.ctxt, typ)
+
+    def true(self):
+        return self.one("bool")
+
+    def false(self):
+        return self.zero("bool")
 
     def string_literal(self, value):
         return lib.gcc_jit_context_new_string_literal(self.ctxt, value)
 
     def call(self, function, arguments=None):
         if arguments:
-            arguments = ffi.new("gcc_jit_rvalue*[]", arguments)
+            arguments = ffi.new(
+                "gcc_jit_rvalue*[]",
+                [asrvalue(a) for a in arguments])
         return lib.gcc_jit_context_new_call(
             self.ctxt, ffi.NULL, function, len(arguments), arguments)
 
@@ -469,6 +527,14 @@ class Context:
         pointer, index = asrvalue(pointer), asrvalue(index)
         return lib.gcc_jit_context_new_array_access(
             self.ctxt, ffi.NULL, pointer, index)
+
+    def address(elf, lvalue):
+        return lib.gcc_jit_lvalue_get_address(lvalue, ffi.NULL)
+
+    def cast(self, rvalue, typ):
+        typ = self.type(typ)
+        return lib.gcc_jit_context_new_cast(
+            self.ctxt, ffi.NULL, rvalue, typ)
 
     def block(self, function):
         blck = lib.gcc_jit_function_new_block(function, ffi.NULL)

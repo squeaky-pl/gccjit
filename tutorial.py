@@ -46,6 +46,19 @@ def main():
 
     block.end_with_return(context.integer(0))
 
+    param = context.param("unsigned long", "param")
+    overflow = context.exported_function(
+         "bool", "overflow", [param])
+
+    block = context.block(overflow)
+    __builtin_uaddl_overflow = context.builtin_function(
+    "__builtin_uaddl_overflow")
+    one = context.integer(0xffff_ffff_ffff_ffff, "unsigned long")
+    res = context.local(overflow, "unsigned long", "res")
+    overflow_call = context.call(
+        __builtin_uaddl_overflow, [one, param, context.address(res)])
+    block.end_with_return(overflow_call)
+
     result = context.compile()
     context.close()
 
@@ -61,6 +74,11 @@ def main():
     x = fill(buffer)
     print(x)
     print(ffi.unpack(buffer, 2))
+
+    fn_ptr = result.code("overflow")
+    overflow = ffi.cast("bool (*)(unsigned long)", fn_ptr)
+    x = overflow(0)
+    print(x)
 
     result.close()
 
