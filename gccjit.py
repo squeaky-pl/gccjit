@@ -231,6 +231,20 @@ gcc_jit_block_add_assignment (gcc_jit_block *block,
 
 gcc_jit_rvalue *
 gcc_jit_lvalue_as_rvalue (gcc_jit_lvalue *lvalue);
+
+
+void
+gcc_jit_block_add_assignment_op (gcc_jit_block *block,
+     gcc_jit_location *loc,
+     gcc_jit_lvalue *lvalue,
+     enum gcc_jit_binary_op op,
+     gcc_jit_rvalue *rvalue);
+
+
+void
+gcc_jit_block_end_with_jump (gcc_jit_block *block,
+    gcc_jit_location *loc,
+    gcc_jit_block *target);
 """)
 
 lib = ffi.dlopen('libgccjit.so.0')
@@ -461,9 +475,17 @@ class Block:
     def add_assignment(self, lvalue, rvalue):
         lib.gcc_jit_block_add_assignment(self.blck, ffi.NULL, lvalue, rvalue)
 
+    def add_assignment_op(self, lvalue, operation, rvalue):
+        operation = binop(operation)
+        lib.gcc_jit_block_add_assignment_op(
+            self.blck, ffi.NULL, lvalue, operation.value, rvalue)
+
     def end_with_return(self, rvalue):
         rvalue = asrvalue(rvalue)
         lib.gcc_jit_block_end_with_return(self.blck, ffi.NULL, rvalue)
+
+    def end_with_jump(self, target):
+        lib.gcc_jit_block_end_with_jump(self.blck, ffi.NULL, target.blck)
 
     def end_with_conditonal(self, rvalue, on_true, on_false):
         lib.gcc_jit_block_end_with_conditional(
