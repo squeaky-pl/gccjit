@@ -538,10 +538,13 @@ class Context:
         return lib.gcc_jit_context_new_cast(
             self.ctxt, ffi.NULL, rvalue, typ)
 
-    def block(self, function):
-        blck = lib.gcc_jit_function_new_block(function, ffi.NULL)
+    def block(self, function, name=None):
+        if name:
+            name = name.encode()
+        name = name or ffi.NULL
+        blck = lib.gcc_jit_function_new_block(function, name)
 
-        return Block(blck)
+        return Block(blck, name)
 
     def binary(self, operation, res_type, left, right):
         res_type = self.type(res_type)
@@ -573,8 +576,9 @@ class Context:
 
 
 class Block:
-    def __init__(self, blck):
+    def __init__(self, blck, name):
         self.blck = blck
+        self.name = name
 
     def add_eval(self, lvalue):
         lib.gcc_jit_block_add_eval(self.blck, ffi.NULL, lvalue)
@@ -598,6 +602,9 @@ class Block:
     def end_with_conditonal(self, rvalue, on_true, on_false):
         lib.gcc_jit_block_end_with_conditional(
             self.blck, ffi.NULL, rvalue, on_true.blck, on_false.blck)
+
+    def __repr__(self):
+        return '<Block {!r}>'.format(self.name or self.blck)
 
 
 class Result:
