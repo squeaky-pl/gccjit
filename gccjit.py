@@ -301,6 +301,15 @@ gcc_jit_context_new_struct_type (gcc_jit_context *ctxt,
     int num_fields,
     gcc_jit_field **fields);
 
+
+gcc_jit_lvalue *
+gcc_jit_rvalue_dereference_field (gcc_jit_rvalue *ptr,
+    gcc_jit_location *loc,
+    gcc_jit_field *field);
+
+gcc_jit_type *
+gcc_jit_struct_as_type(gcc_jit_struct *struct_type);
+
 """)
 
 lib = ffi.dlopen('libgccjit.so.0')
@@ -360,6 +369,16 @@ def aslvalue(value):
         return value
     elif typname == 'gcc_jit_param *':
         return lib.gcc_jit_param_as_lvalue(value)
+
+    assert(0)
+
+
+def astype(value):
+    typname = ffi.typeof(value).cname
+    if typname == 'gcc_jit_type *':
+        return value
+    elif typname == 'gcc_jit_struct *':
+        return lib.gcc_jit_struct_as_type(value)
 
     assert(0)
 
@@ -462,6 +481,7 @@ class Context:
         key = (typ, '*')
 
         if key not in self._type_cache:
+            typ = astype(typ)
             self._type_cache[key] = lib.gcc_jit_type_get_pointer(typ)
 
         return self._type_cache[key]
@@ -514,6 +534,10 @@ class Context:
         fields = ffi.new("gcc_jit_field*[]", fields)
         return lib.gcc_jit_context_new_struct_type(
             self.ctxt, ffi.NULL, name.encode(), len(fields), fields)
+
+    def dereference_field(self, rvalue, field):
+        rvalue = asrvalue(rvalue)
+        return lib.gcc_jit_rvalue_dereference_field(rvalue, ffi.NULL, field)
 
     def integer(self, value, typ="int"):
         typ = self.type(typ)
