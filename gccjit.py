@@ -356,6 +356,8 @@ class Function(enum.Enum):
 class BinaryOp(enum.Enum):
     PLUS = lib.GCC_JIT_BINARY_OP_PLUS
     MULT = lib.GCC_JIT_BINARY_OP_MULT
+    MINUS = lib.GCC_JIT_BINARY_OP_MINUS
+    DIVIDE = lib.GCC_JIT_BINARY_OP_DIVIDE
 
 
 def asrvalue(value):
@@ -392,6 +394,8 @@ def astype(value):
 
 string_to_binop = {
     '+': BinaryOp.PLUS,
+    '-': BinaryOp.MINUS,
+    '/': BinaryOp.DIVIDE,
     '*': BinaryOp.MULT
 }
 
