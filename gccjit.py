@@ -458,7 +458,8 @@ def compop(value):
 
 
 class Context:
-    def __init__(self, *, optimization_level=None, dump=False):
+    def __init__(self, *, optimization_level=None, dump=False,
+                 keep_intermediates=False):
         self.ctxt = lib.gcc_jit_context_acquire()
         if optimization_level:
             lib.gcc_jit_context_set_int_option(
@@ -467,6 +468,9 @@ class Context:
         if dump:
             lib.gcc_jit_context_set_bool_option(
                 self.ctxt, lib.GCC_JIT_BOOL_OPTION_DUMP_GENERATED_CODE, 1)
+        if keep_intermediates:
+            lib.gcc_jit_context_set_bool_option(
+                self.ctxt, lib.GCC_JIT_BOOL_OPTION_KEEP_INTERMEDIATES, 1)
 
         self._type_cache = {}
 
