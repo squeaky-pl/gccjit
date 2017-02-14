@@ -283,6 +283,24 @@ gcc_jit_rvalue *
 gcc_jit_lvalue_get_address (gcc_jit_lvalue *lvalue,
 			    gcc_jit_location *loc);
 
+
+typedef ... gcc_jit_field;
+
+gcc_jit_field *
+gcc_jit_context_new_field (gcc_jit_context *ctxt,
+   gcc_jit_location *loc,
+   gcc_jit_type *type,
+   const char *name);
+
+typedef ... gcc_jit_struct;
+
+gcc_jit_struct *
+gcc_jit_context_new_struct_type (gcc_jit_context *ctxt,
+    gcc_jit_location *loc,
+    const char *name,
+    int num_fields,
+    gcc_jit_field **fields);
+
 """)
 
 lib = ffi.dlopen('libgccjit.so.0')
@@ -486,6 +504,16 @@ class Context:
     def builtin_function(self, name):
         return lib.gcc_jit_context_get_builtin_function(
             self.ctxt, name.encode())
+
+    def field(self, typ, name):
+        typ = self.type(typ)
+        return lib.gcc_jit_context_new_field(
+            self.ctxt, ffi.NULL, typ, name.encode())
+
+    def struct_type(self, name, fields):
+        fields = ffi.new("gcc_jit_field*[]", fields)
+        return lib.gcc_jit_context_new_struct_type(
+            self.ctxt, ffi.NULL, name.encode(), len(fields), fields)
 
     def integer(self, value, typ="int"):
         typ = self.type(typ)
