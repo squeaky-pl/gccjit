@@ -158,6 +158,10 @@ gcc_jit_block_end_with_return (gcc_jit_block *block,
        gcc_jit_location *loc,
        gcc_jit_rvalue *rvalue);
 
+void
+gcc_jit_block_end_with_void_return (gcc_jit_block *block,
+    gcc_jit_location *loc);
+
 
 typedef ... gcc_jit_result;
 
@@ -316,6 +320,7 @@ lib = ffi.dlopen('libgccjit.so.0')
 
 
 class Type(enum.Enum):
+    VOID = lib.GCC_JIT_TYPE_VOID
     BOOL = lib.GCC_JIT_TYPE_BOOL
     CONST_CHAR_PTR = lib.GCC_JIT_TYPE_CONST_CHAR_PTR
     CHAR = lib.GCC_JIT_TYPE_CHAR
@@ -324,6 +329,7 @@ class Type(enum.Enum):
 
 
 string_to_enumtype = {
+    'void': Type.VOID,
     'bool': Type.BOOL,
     'const char*': Type.CONST_CHAR_PTR,
     'char': Type.CHAR,
@@ -344,6 +350,7 @@ def enumtype(value):
 class Function(enum.Enum):
     IMPORTED = lib.GCC_JIT_FUNCTION_IMPORTED
     EXPORTED = lib.GCC_JIT_FUNCTION_EXPORTED
+    INTERNAL = lib.GCC_JIT_FUNCTION_INTERNAL
 
 
 class BinaryOp(enum.Enum):
@@ -521,6 +528,10 @@ class Context:
         return self.function(
             Function.EXPORTED, ret_type, name, params)
 
+    def internal_function(self, ret_type, name, params=None):
+        return self.function(
+            Function.INTERNAL, ret_type, name, params)
+
     def builtin_function(self, name):
         return lib.gcc_jit_context_get_builtin_function(
             self.ctxt, name.encode())
@@ -647,6 +658,9 @@ class Block:
     def end_with_return(self, rvalue):
         rvalue = asrvalue(rvalue)
         lib.gcc_jit_block_end_with_return(self.blck, ffi.NULL, rvalue)
+
+    def end_with_void_return(self):
+        lib.gcc_jit_block_end_with_void_return(self.blck, ffi.NULL)
 
     def end_with_jump(self, target):
         lib.gcc_jit_block_end_with_jump(self.blck, ffi.NULL, target.blck)
