@@ -529,6 +529,11 @@ class Context:
             function, ffi.NULL, typ, name.encode())
 
     def imported_function(self, ret_type, name, params=None):
+        if params:
+            for i, v in enumerate(params):
+                if isinstance(v, str):
+                    params[i] = self.param(v, 'p{}'.format(i))
+
         return self.function(
             Function.IMPORTED, ret_type, name, params)
 
