@@ -480,7 +480,7 @@ class Context:
 
     def type(self, typ):
         if repr(typ).startswith('<cdata '):
-            return typ
+            return astype(typ)
 
         typ = enumtype(typ)
 
