@@ -330,19 +330,23 @@ lib = ffi.dlopen('libgccjit.so.0')
 
 class Type(enum.Enum):
     VOID = lib.GCC_JIT_TYPE_VOID
+    VOID_PTR = lib.GCC_JIT_TYPE_VOID_PTR
     BOOL = lib.GCC_JIT_TYPE_BOOL
     CONST_CHAR_PTR = lib.GCC_JIT_TYPE_CONST_CHAR_PTR
     CHAR = lib.GCC_JIT_TYPE_CHAR
     INT = lib.GCC_JIT_TYPE_INT
+    LONG = lib.GCC_JIT_TYPE_LONG
     UNSIGNED_LONG = lib.GCC_JIT_TYPE_UNSIGNED_LONG
 
 
 string_to_enumtype = {
     'void': Type.VOID,
+    'void*': Type.VOID_PTR,
     'bool': Type.BOOL,
     'const char*': Type.CONST_CHAR_PTR,
     'char': Type.CHAR,
     'int': Type.INT,
+    'long': Type.LONG,
     'unsigned long': Type.UNSIGNED_LONG,
 }
 
@@ -490,6 +494,10 @@ class Context:
     def type(self, typ):
         if repr(typ).startswith('<cdata '):
             return astype(typ)
+
+        # no native type
+        if typ == "ssize_t":
+            typ = "long"
 
         typ = enumtype(typ)
 
