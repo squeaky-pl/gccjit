@@ -27,6 +27,16 @@ enum gcc_jit_bool_option
                                   enum gcc_jit_bool_option opt,
                                   int value);
 
+
+typedef ... gcc_jit_location;
+
+
+gcc_jit_location *
+gcc_jit_context_new_location (gcc_jit_context *ctxt,
+            const char *filename,
+            int line, int column);
+
+
 enum gcc_jit_int_option
 {
   GCC_JIT_INT_OPTION_OPTIMIZATION_LEVEL,
@@ -67,7 +77,6 @@ enum gcc_jit_types
 
 };
 
-typedef ... gcc_jit_location;
 typedef ... gcc_jit_param;
 typedef ... gcc_jit_lvalue;
 
@@ -507,7 +516,7 @@ class Context:
         return lib.gcc_jit_context_new_param(
             self.ctxt, ffi.NULL, typ, name.encode())
 
-    def function(self, fun_type, ret_type, name, params=None):
+    def function(self, fun_type, ret_type, name, params=None, location=None):
         ret_type = self.type(ret_type)
         variadic = 0
         if params:
@@ -519,7 +528,8 @@ class Context:
         params = params or ffi.NULL
         len_params = len(params) if params else 0
         return lib.gcc_jit_context_new_function(
-            self.ctxt, ffi.NULL, fun_type.value, ret_type, name.encode(),
+            self.ctxt, location or ffi.NULL, fun_type.value,
+            ret_type, name.encode(),
             len_params, params, variadic)
 
     def local(self, function, typ, name):
@@ -537,13 +547,13 @@ class Context:
         return self.function(
             Function.IMPORTED, ret_type, name, params)
 
-    def exported_function(self, ret_type, name, params=None):
+    def exported_function(self, ret_type, name, params=None, location=None):
         return self.function(
-            Function.EXPORTED, ret_type, name, params)
+            Function.EXPORTED, ret_type, name, params, location)
 
-    def internal_function(self, ret_type, name, params=None):
+    def internal_function(self, ret_type, name, params=None, location=None):
         return self.function(
-            Function.INTERNAL, ret_type, name, params)
+            Function.INTERNAL, ret_type, name, params, location)
 
     def builtin_function(self, name):
         return lib.gcc_jit_context_get_builtin_function(
@@ -642,6 +652,10 @@ class Context:
         return lib.gcc_jit_context_new_comparison(
             self.ctxt, ffi.NULL, operation.value, left, right)
 
+    def location(self, filename, line, column):
+        return lib.gcc_jit_context_new_location(
+            self.ctxt, filename.encode(), line, column)
+
     def compile(self):
         rslt = lib.gcc_jit_context_compile(self.ctxt)
 
@@ -656,31 +670,35 @@ class Block:
         self.blck = blck
         self.name = name
 
-    def add_eval(self, lvalue):
-        lib.gcc_jit_block_add_eval(self.blck, ffi.NULL, lvalue)
+    def add_eval(self, lvalue, location=None):
+        lib.gcc_jit_block_add_eval(self.blck, location or ffi.NULL, lvalue)
 
-    def add_assignment(self, lvalue, rvalue):
+    def add_assignment(self, lvalue, rvalue, location=None):
         lvalue, rvalue = aslvalue(lvalue), asrvalue(rvalue)
-        lib.gcc_jit_block_add_assignment(self.blck, ffi.NULL, lvalue, rvalue)
+        lib.gcc_jit_block_add_assignment(
+            self.blck, location or ffi.NULL, lvalue, rvalue)
 
-    def add_assignment_op(self, lvalue, operation, rvalue):
+    def add_assignment_op(self, lvalue, operation, rvalue, location=None):
         operation = binop(operation)
         lib.gcc_jit_block_add_assignment_op(
-            self.blck, ffi.NULL, lvalue, operation.value, rvalue)
+            self.blck, location or ffi.NULL, lvalue, operation.value, rvalue)
 
-    def end_with_return(self, rvalue):
+    def end_with_return(self, rvalue, location=None):
         rvalue = asrvalue(rvalue)
-        lib.gcc_jit_block_end_with_return(self.blck, ffi.NULL, rvalue)
+        lib.gcc_jit_block_end_with_return(
+            self.blck, location or ffi.NULL, rvalue)
 
-    def end_with_void_return(self):
-        lib.gcc_jit_block_end_with_void_return(self.blck, ffi.NULL)
+    def end_with_void_return(self, location=None):
+        lib.gcc_jit_block_end_with_void_return(self.blck, location or ffi.NULL)
 
-    def end_with_jump(self, target):
-        lib.gcc_jit_block_end_with_jump(self.blck, ffi.NULL, target.blck)
+    def end_with_jump(self, target, location=None):
+        lib.gcc_jit_block_end_with_jump(
+            self.blck, location or ffi.NULL, target.blck)
 
-    def end_with_conditonal(self, rvalue, on_true, on_false):
+    def end_with_conditonal(self, rvalue, on_true, on_false, location=None):
         lib.gcc_jit_block_end_with_conditional(
-            self.blck, ffi.NULL, rvalue, on_true.blck, on_false.blck)
+            self.blck, location or ffi.NULL,
+            rvalue, on_true.blck, on_false.blck)
 
     def __repr__(self):
         return '<Block {!r}>'.format(self.name or self.blck)
