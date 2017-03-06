@@ -351,6 +351,7 @@ class Type(enum.Enum):
     CONST_CHAR_PTR = lib.GCC_JIT_TYPE_CONST_CHAR_PTR
     CHAR = lib.GCC_JIT_TYPE_CHAR
     INT = lib.GCC_JIT_TYPE_INT
+    UNSIGNED_INT = lib.GCC_JIT_TYPE_UNSIGNED_INT
     LONG = lib.GCC_JIT_TYPE_LONG
     UNSIGNED_LONG = lib.GCC_JIT_TYPE_UNSIGNED_LONG
 
@@ -362,6 +363,7 @@ string_to_enumtype = {
     'const char*': Type.CONST_CHAR_PTR,
     'char': Type.CHAR,
     'int': Type.INT,
+    'unsigned int': Type.UNSIGNED_INT,
     'long': Type.LONG,
     'unsigned long': Type.UNSIGNED_LONG,
 }
