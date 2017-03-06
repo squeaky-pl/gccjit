@@ -323,6 +323,22 @@ gcc_jit_rvalue_dereference_field (gcc_jit_rvalue *ptr,
 gcc_jit_type *
 gcc_jit_struct_as_type(gcc_jit_struct *struct_type);
 
+
+enum gcc_jit_global_kind
+{
+  GCC_JIT_GLOBAL_EXPORTED,
+  GCC_JIT_GLOBAL_INTERNAL,
+  GCC_JIT_GLOBAL_IMPORTED
+};
+
+
+extern gcc_jit_lvalue *
+gcc_jit_context_new_global (gcc_jit_context *ctxt,
+    gcc_jit_location *loc,
+    enum gcc_jit_global_kind kind,
+    gcc_jit_type *type,
+const char *name);
+
 """)
 
 lib = ffi.dlopen('libgccjit.so.0')
@@ -548,6 +564,25 @@ class Context:
 
         return lib.gcc_jit_function_new_local(
             function, ffi.NULL, typ, name.encode())
+
+    def globl(self, kind, typ, name, location=None):
+        typ = self.type(typ)
+
+        return lib.gcc_jit_context_new_global(
+            self.ctxt, location or ffi.NULL, kind, typ,
+            name.encode())
+
+    def exported_global(self, typ, name, location=None):
+        return self.globl(
+            lib.GCC_JIT_GLOBAL_EXPORTED, typ, name, location)
+
+    def imported_global(self, typ, name, location=None):
+        return self.globl(
+            lib.GCC_JIT_GLOBAL_IMPORTED, typ, name, location)
+
+    def internal_global(self, typ, name, location=None):
+        return self.globl(
+            lib.GCC_JIT_GLOBAL_INTERNAL, typ, name, location)
 
     def imported_function(self, ret_type, name, params=None):
         if params:
