@@ -339,6 +339,20 @@ gcc_jit_context_new_global (gcc_jit_context *ctxt,
     gcc_jit_type *type,
 const char *name);
 
+gcc_jit_rvalue *
+gcc_jit_rvalue_access_field (gcc_jit_rvalue *struct_or_union,
+			     gcc_jit_location *loc,
+gcc_jit_field *field);
+
+
+extern gcc_jit_lvalue *
+gcc_jit_lvalue_access_field (gcc_jit_lvalue *struct_or_union,
+			     gcc_jit_location *loc,
+gcc_jit_field *field);
+
+gcc_jit_rvalue *
+gcc_jit_context_null (gcc_jit_context *ctxt,
+gcc_jit_type *pointer_type);
 """)
 
 lib = ffi.dlopen('libgccjit.so.0')
@@ -528,6 +542,11 @@ class Context:
 
         return self._type_cache[typ]
 
+    def null(self, typ):
+        typ = self.type(typ)
+
+        return lib.gcc_jit_context_null(self.ctxt, typ)
+
     def pointer_type(self, typ):
         typ = self.type(typ)
 
@@ -617,6 +636,17 @@ class Context:
         return lib.gcc_jit_context_new_struct_type(
             self.ctxt, ffi.NULL, name.encode(), len(fields), fields)
 
+    def access_field(self, rvalue, field, location=None):
+        rvalue = asrvalue(rvalue)
+        return lib.gcc_jit_rvalue_access_field(
+            rvalue, location or ffi.NULL, field)
+
+    def access_field_lvalue(self, lvalue, field, location=None):
+        lvalue = aslvalue(lvalue)
+
+        return lib.gcc_jit_lvalue_access_field(
+            lvalue, location or ffi.NULL, field)
+
     def dereference_field(self, rvalue, field):
         rvalue = asrvalue(rvalue)
         return lib.gcc_jit_rvalue_dereference_field(rvalue, ffi.NULL, field)
@@ -664,8 +694,8 @@ class Context:
         return lib.gcc_jit_context_new_array_access(
             self.ctxt, ffi.NULL, pointer, index)
 
-    def address(elf, lvalue):
-        return lib.gcc_jit_lvalue_get_address(lvalue, ffi.NULL)
+    def address(self, lvalue, location=None):
+        return lib.gcc_jit_lvalue_get_address(lvalue, location or ffi.NULL)
 
     def cast(self, rvalue, typ):
         typ = self.type(typ)
