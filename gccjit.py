@@ -353,6 +353,20 @@ gcc_jit_field *field);
 gcc_jit_rvalue *
 gcc_jit_context_null (gcc_jit_context *ctxt,
 gcc_jit_type *pointer_type);
+
+enum gcc_jit_output_kind
+{
+  GCC_JIT_OUTPUT_KIND_ASSEMBLER,
+  GCC_JIT_OUTPUT_KIND_OBJECT_FILE,
+  GCC_JIT_OUTPUT_KIND_DYNAMIC_LIBRARY,
+  GCC_JIT_OUTPUT_KIND_EXECUTABLE
+};
+
+extern void
+gcc_jit_context_compile_to_file (gcc_jit_context *ctxt,
+    enum gcc_jit_output_kind output_kind,
+const char *output_path);
+
 """)
 
 lib = ffi.dlopen('libgccjit.so.0')
@@ -495,6 +509,13 @@ string_to_compop = {
     '>': ComparisonOp.GT,
     '>=': ComparisonOp.GE
 }
+
+
+class OutputKind(enum.Enum):
+    ASSEMBLER = lib.GCC_JIT_OUTPUT_KIND_ASSEMBLER
+    OBJECT_FILE = lib.GCC_JIT_OUTPUT_KIND_OBJECT_FILE
+    DYNAMIC_LIBRARY = lib.GCC_JIT_OUTPUT_KIND_DYNAMIC_LIBRARY
+    EXECUTABLE = lib.GCC_JIT_OUTPUT_KIND_EXECUTABLE
 
 
 def compop(value):
@@ -738,6 +759,16 @@ class Context:
         rslt = lib.gcc_jit_context_compile(self.ctxt)
 
         return Result(rslt)
+
+    def compile_to_file(self, kind, filename):
+        lib.gcc_jit_context_compile_to_file(
+            self.ctxt, kind.value, filename.encode('utf-8'))
+
+    def compile_to_asm(self, filename):
+        self.compile_to_file(OutputKind.ASSEMBLER, filename)
+
+    def compile_to_dynlib(self, filename):
+        self.compile_to_file(OutputKind.DYNAMIC_LIBRARY, filename)
 
     def close(self):
         lib.gcc_jit_context_release(self.ctxt)
